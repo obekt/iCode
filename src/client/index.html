@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>icode</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* ── Dark theme (default) ── */
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-dim: #8b949e;
+      --accent: #58a6ff;
+      --green: #3fb950;
+      --red: #f85149;
+      --input-bg: #0d1117;
+      --picker-active: rgba(88, 166, 255, 0.08);
+      --picker-hover: rgba(88, 166, 255, 0.1);
+      --overlay-bg: rgba(0, 0, 0, 0.6);
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      color-scheme: light dark;
+    }
+
+    /* ── Light theme ── */
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #ffffff;
+        --surface: #f6f8fa;
+        --border: #d1d9e0;
+        --text: #1f2328;
+        --text-dim: #656d76;
+        --accent: #0969da;
+        --green: #1a7f37;
+        --red: #cf222e;
+        --input-bg: #ffffff;
+        --picker-active: rgba(9, 105, 218, 0.06);
+        --picker-hover: rgba(9, 105, 218, 0.1);
+        --overlay-bg: rgba(0, 0, 0, 0.3);
+      }
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+      overflow: hidden;
+      touch-action: manipulation;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+    }
+
+    /* ── Header ── */
+    #header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      padding-top: calc(8px + var(--safe-top));
+      padding-left: calc(12px + var(--safe-left));
+      padding-right: calc(12px + var(--safe-right));
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      min-height: 44px;
+    }
+
+    #project-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: none;
+      border: none;
+      color: var(--text);
+      font-size: 17px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      padding: 4px 0;
+    }
+
+    #project-btn:active { opacity: 0.7; }
+
+    .logo { color: var(--accent); font-weight: 700; }
+
+    #project-label {
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .chevron { color: var(--text-dim); font-size: 12px; }
+
+    .conn-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .conn-dot.connected { background: var(--green); }
+    .conn-dot.disconnected { background: var(--red); }
+
+    /* ── Terminal ── */
+    #terminal {
+      flex: 1;
+      min-height: 0;
+      padding-left: var(--safe-left);
+      padding-right: var(--safe-right);
+    }
+
+    #terminal .xterm {
+      height: 100%;
+      padding: 4px;
+    }
+
+    /* ── Key bar ── */
+    #key-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 6px 8px;
+      padding-bottom: calc(6px + var(--safe-bottom));
+      padding-left: calc(8px + var(--safe-left));
+      padding-right: calc(8px + var(--safe-right));
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .key-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    #key-bar button {
+      height: 40px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+      font-weight: 500;
+      cursor: pointer;
+      flex: 1;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #key-bar button:active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    #key-bar .enter-key {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    #key-bar .enter-key:active { opacity: 0.7; }
+
+    /* ── Project picker overlay ── */
+    #project-picker {
+      position: fixed;
+      inset: 0;
+      background: var(--overlay-bg);
+      z-index: 100;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    #project-picker[hidden] { display: none; }
+
+    .picker-sheet {
+      width: 100%;
+      max-width: 500px;
+      max-height: 70vh;
+      background: var(--surface);
+      border-radius: 14px 14px 0 0;
+      display: flex;
+      flex-direction: column;
+      padding-bottom: var(--safe-bottom);
+    }
+
+    .picker-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 16px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .picker-header h2 { font-size: 17px; font-weight: 600; }
+
+    #picker-close {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 24px;
+      cursor: pointer;
+      padding: 4px 8px;
+      -webkit-tap-highlight-color: transparent;
+      line-height: 1;
+    }
+
+    .picker-body {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .picker-row {
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .picker-row.active { background: var(--picker-active); }
+
+    .picker-item {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      padding: 12px 16px;
+      background: none;
+      border: none;
+      color: var(--text);
+      text-align: left;
+      cursor: pointer;
+      font-family: inherit;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .picker-item:active { background: var(--picker-hover); }
+
+    .picker-item-name { font-size: 15px; font-weight: 500; }
+    .picker-item-path { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+    .picker-delete {
+      width: 44px;
+      height: 44px;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 20px;
+      cursor: pointer;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .picker-delete:active { color: var(--red); }
+
+    .picker-footer {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    #picker-input {
+      flex: 1;
+      height: 44px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--input-bg);
+      color: var(--text);
+      font-size: 15px;
+      font-family: 'Menlo', monospace;
+      outline: none;
+    }
+
+    #picker-input:focus { border-color: var(--accent); }
+    #picker-input::placeholder { color: var(--text-dim); }
+
+    #picker-go {
+      width: 44px;
+      height: 44px;
+      border: none;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #picker-go:active { opacity: 0.7; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="header">
+      <button id="project-btn">
+        <span class="logo">icode</span>
+        <span id="project-label">...</span>
+        <span class="chevron">&#9662;</span>
+      </button>
+      <div id="conn-dot" class="conn-dot disconnected"></div>
+    </div>
+    <div id="terminal"></div>
+    <div id="key-bar">
+      <div class="key-row">
+        <button data-seq="&#3;">Interrupt</button>
+        <button data-seq="&#27;&#27;">Rewind</button>
+        <button data-seq="&#4;">Exit</button>
+        <button data-seq="&#27;">Esc</button>
+      </div>
+      <div class="key-row">
+        <button data-seq="&#27;[A">&uarr;</button>
+        <button data-seq="&#27;[B">&darr;</button>
+        <button data-seq="&#27;[Z">Mode</button>
+        <button data-seq="&#13;" class="enter-key">Enter</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Project picker bottom sheet -->
+  <div id="project-picker" hidden>
+    <div class="picker-sheet">
+      <div class="picker-header">
+        <h2>Projects</h2>
+        <button id="picker-close">&times;</button>
+      </div>
+      <div class="picker-body" id="picker-list"></div>
+      <div class="picker-footer">
+        <input id="picker-input" type="text" placeholder="/path/to/project">
+        <button id="picker-go">&rarr;</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Cache-bust the app bundle
+    const s = document.createElement("script");
+    s.type = "module";
+    s.src = "/app.js?" + Date.now();
+    document.body.appendChild(s);
+  </script>
+</body>
+</html>
