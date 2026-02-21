@@ -17,11 +17,12 @@ The server spawns the real `claude` CLI in a pseudo-terminal (PTY) and streams r
 ## Features
 
 - **Full terminal experience** — colors, cursor movement, ASCII art, everything renders via xterm.js
-- **Permission prompts** — approve/deny tool calls directly in the terminal
-- **Project switching** — pick from recent projects or enter a custom path, no server restart needed
-- **Shortcut bar** — Interrupt, Rewind, Exit, Esc, arrow keys, Mode (cycle permission modes), and Enter
-- **Light & dark theme** — follows your system preference
-- **Mobile-first** — designed for iPhone Safari with safe area support and touch-optimized UI
+- **Persistent sessions** — reload the browser or lose connection and pick up right where you left off. Sessions survive disconnects and replay recent output on reconnect
+- **Accept-edits by default** — starts in `acceptEdits` permission mode so file edits are auto-approved. Cycle modes with the Mode button
+- **Project switching** — pick from recent projects, add custom paths, or delete entries. No server restart needed
+- **Shortcut bar** — Interrupt, Rewind, Exit, Esc, arrow keys, Mode (cycle permission modes), and Enter — essential keys for controlling Claude Code without a physical keyboard
+- **Light & dark theme** — follows your system preference automatically
+- **Mobile-first** — designed for iPhone Safari with safe area support, touch-optimized UI, and smooth scrolling
 
 ## Requirements
 
@@ -39,7 +40,7 @@ npm run build
 npm run dev
 ```
 
-Then open `http://<your-mac-ip>:3333` in Safari on your iPhone.
+Then open `http://<your-mac-ip>:3333` in Safari on your iPhone. The project picker opens automatically — select a directory to start Claude Code in.
 
 To find your Mac's IP:
 
@@ -60,7 +61,7 @@ ipconfig getifaddr en0
 src/
   server/
     index.ts    # HTTP server, /api/projects, WebSocket setup
-    pty.ts      # Spawns claude via node-pty, WS <-> PTY protocol
+    pty.ts      # Spawns claude via node-pty, persistent session management
   client/
     index.html  # Mobile UI: header, terminal, project picker, shortcut bar
     app.ts      # xterm.js + WebSocket wiring + project picker logic
@@ -82,7 +83,7 @@ Simple prefix-byte protocol:
 | Client -> Server | `1<cols>,<rows>` | Resize terminal |
 | Client -> Server | `2{"cwd":"..."}` | Switch project / spawn session |
 | Server -> Client | raw string | Terminal output (stdout) |
-| Server -> Client | `\x01{"type":"..."}` | Control messages (spawned, exited, error, ready) |
+| Server -> Client | `\x01{"type":"..."}` | Control messages (spawned, attached, exited, error, ready) |
 
 ## License
 

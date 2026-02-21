@@ -179,6 +179,10 @@ function handleControl(json: string): void {
       case "spawned":
         if (msg.cwd) setProject(msg.cwd);
         break;
+      case "attached":
+        // Reconnected to existing session — don't clear terminal
+        if (msg.cwd) setProject(msg.cwd);
+        break;
       case "exited":
         term.writeln(`\r\n\x1b[90m[session exited with code ${msg.code}]\x1b[0m`);
         break;
